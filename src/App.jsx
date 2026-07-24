@@ -218,7 +218,7 @@ export default function App() {
             onDeleteEvent={handleDeleteEvent}
           />
           <CalendarPanel
-            title="Provider"
+            title="Plumber"
             accountLabel="Business's iCloud Calendar"
             accent="#ff9f0a"
             monthDate={monthDate}

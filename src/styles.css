@@ -369,7 +369,7 @@ body {
   color: var(--text-dim);
   font-weight: 600;
 }
-.modal input, .modal textarea {
+.modal input, .modal textarea, .modal select {
   font-family: inherit;
   font-size: 13px;
   padding: 8px 10px;
@@ -378,6 +378,12 @@ body {
   color: var(--text);
   resize: vertical;
 }
+.phone-input-row {
+  display: flex;
+  gap: 6px;
+}
+.dial-code-select { flex: 0 0 110px; }
+.phone-input-row input { flex: 1; min-width: 0; }
 .form-row {
   display: flex;
   gap: 10px;

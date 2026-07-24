@@ -1,6 +1,19 @@
 import { useState } from "react";
 
+const COUNTRY_CODES = [
+  { name: "India", iso: "IN", dial: "+91" },
+  { name: "United States", iso: "US", dial: "+1" },
+  { name: "United Kingdom", iso: "GB", dial: "+44" },
+  { name: "United Arab Emirates", iso: "AE", dial: "+971" },
+  { name: "Australia", iso: "AU", dial: "+61" },
+  { name: "Canada", iso: "CA", dial: "+1" },
+  { name: "Germany", iso: "DE", dial: "+49" },
+  { name: "France", iso: "FR", dial: "+33" },
+  { name: "Singapore", iso: "SG", dial: "+65" },
+];
+
 export default function CallForm({ onCancel, onSubmit, submitting }) {
+  const [dialCode, setDialCode] = useState(COUNTRY_CODES[0].dial);
   const [toNumber, setToNumber] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [reason, setReason] = useState("");
@@ -8,13 +21,14 @@ export default function CallForm({ onCancel, onSubmit, submitting }) {
 
   function handleSubmit(e) {
     e.preventDefault();
-    if (!/^\+[1-9]\d{6,14}$/.test(toNumber.trim())) {
-      setFormError("Enter a valid phone number in E.164 format, e.g. +919812345678.");
+    const fullNumber = `${dialCode}${toNumber.trim()}`;
+    if (!/^\+[1-9]\d{6,14}$/.test(fullNumber)) {
+      setFormError("Enter a valid phone number, e.g. 9812345678.");
       return;
     }
     setFormError(null);
     onSubmit({
-      to_number: toNumber.trim(),
+      to_number: fullNumber,
       customer_name: customerName.trim() || null,
       reason: reason.trim() || null,
     });
@@ -28,12 +42,21 @@ export default function CallForm({ onCancel, onSubmit, submitting }) {
 
         <label>
           Phone number
-          <input
-            value={toNumber}
-            onChange={(e) => setToNumber(e.target.value)}
-            placeholder="+919812345678"
-            autoFocus
-          />
+          <div className="phone-input-row">
+            <select value={dialCode} onChange={(e) => setDialCode(e.target.value)} className="dial-code-select">
+              {COUNTRY_CODES.map((c) => (
+                <option key={c.iso} value={c.dial}>
+                  {c.iso} {c.dial}
+                </option>
+              ))}
+            </select>
+            <input
+              value={toNumber}
+              onChange={(e) => setToNumber(e.target.value.replace(/[^\d]/g, ""))}
+              placeholder="9876543210"
+              autoFocus
+            />
+          </div>
         </label>
 
         <label>
