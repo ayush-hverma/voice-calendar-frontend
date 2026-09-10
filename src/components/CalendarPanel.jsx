@@ -82,6 +82,9 @@ export default function CalendarPanel({
           {days.map((day) => {
             const inMonth = day.getMonth() === monthDate.getMonth();
             const dayEvents = eventsByDay(day);
+            if (!inMonth) {
+              return <div key={day.toISOString()} className="day-cell day-cell-empty" />;
+            }
             const isToday = isSameDay(day, today);
             const isSelected = isSameDay(day, selectedDate);
             return (
@@ -89,7 +92,6 @@ export default function CalendarPanel({
                 key={day.toISOString()}
                 className={[
                   "day-cell",
-                  !inMonth && "day-cell-muted",
                   isToday && "day-cell-today",
                   isSelected && "day-cell-selected",
                 ]

@@ -53,15 +53,19 @@ export default function CallForm({ onCancel, onSubmit, submitting }) {
             <input
               value={toNumber}
               onChange={(e) => setToNumber(e.target.value.replace(/[^\d]/g, ""))}
-              placeholder="9876543210"
+              placeholder="XXXXXXXXXX"
               autoFocus
             />
           </div>
         </label>
 
         <label>
-          Customer name (optional)
-          <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+          Customer name
+          <input 
+          value={customerName} 
+          onChange={(e) => setCustomerName(e.target.value)} 
+          placeholder="John"
+          />
         </label>
 
         <label>
