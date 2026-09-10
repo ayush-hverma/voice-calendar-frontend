@@ -53,20 +53,11 @@ export async function triggerCall(fields) {
   return handleResponse(res);
 }
 
-export async function signup(email, password) {
-  const res = await fetch(`${BASE_URL}/auth/signup`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
-  return handleResponse(res);
-}
-
-export async function login(email, password) {
+export async function login(username, password) {
   const res = await fetch(`${BASE_URL}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ username, password }),
   });
   return handleResponse(res);
 }
