@@ -20,7 +20,6 @@ export default function SettingsPage({ profile, onSave, onBack }) {
   const initialMobile = splitMobile(profile.mobile);
   const [dialCode, setDialCode] = useState(initialMobile.dial);
   const [mobile, setMobile] = useState(initialMobile.rest);
-  const [email, setEmail] = useState(profile.email || "");
   const {
     connections,
     setConnections,
@@ -34,6 +33,7 @@ export default function SettingsPage({ profile, onSave, onBack }) {
   const [jobTypes, setJobTypes] = useState(profile.jobTypes || []);
   const [error, setError] = useState(null);
   const [saved, setSaved] = useState(false);
+  const email = connections.google?.account || connections.apple?.account || profile.email || "";
 
   useEffect(() => {
     fetchCalendarConnections().then(setConnections).catch(() => {});
@@ -50,7 +50,6 @@ export default function SettingsPage({ profile, onSave, onBack }) {
   async function handleSave() {
     if (!businessName.trim()) return setError("Business name is required.");
     if (!/^\d{6,12}$/.test(mobile.trim())) return setError("Enter a valid mobile number.");
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError("Enter a valid email address.");
     if (Object.keys(connections).length === 0) return setError("Connect at least one calendar.");
     if (!Object.values(hours).some((d) => d.enabled)) return setError("Enable at least one working day.");
     if (jobTypes.length === 0) return setError("Select at least one job type.");
@@ -58,7 +57,7 @@ export default function SettingsPage({ profile, onSave, onBack }) {
     const next = {
       businessName: businessName.trim(),
       mobile: `${dialCode}${mobile.trim()}`,
-      email: email.trim(),
+      email,
       connections,
       hours,
       jobTypes,
@@ -112,7 +111,7 @@ export default function SettingsPage({ profile, onSave, onBack }) {
             </label>
             <label>
               Business email address
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <input type="email" value={email} readOnly title="Set from the connected calendar account, not editable" />
             </label>
           </div>
         </section>

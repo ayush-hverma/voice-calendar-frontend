@@ -22,7 +22,6 @@ export default function OnboardingPortal({ onFinish }) {
   const [businessName, setBusinessName] = useState("");
   const [dialCode, setDialCode] = useState(COUNTRY_CODES[0].dial);
   const [mobile, setMobile] = useState("");
-  const [email, setEmail] = useState("");
   const {
     connections,
     setConnections,
@@ -36,6 +35,7 @@ export default function OnboardingPortal({ onFinish }) {
   const [jobTypes, setJobTypes] = useState([]);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const email = connections.google?.account || connections.apple?.account || "";
 
   useEffect(() => {
     fetchCalendarConnections().then(setConnections).catch(() => {});
@@ -53,7 +53,6 @@ export default function OnboardingPortal({ onFinish }) {
     if (i === 0) {
       if (!businessName.trim()) return "Business name is required.";
       if (!/^\d{6,12}$/.test(mobile.trim())) return "Enter a valid mobile number.";
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return "Enter a valid email address.";
     }
     if (i === 1) {
       if (Object.keys(connections).length === 0) return "Connect at least one calendar to continue.";
@@ -88,7 +87,7 @@ export default function OnboardingPortal({ onFinish }) {
       await onFinish({
         businessName: businessName.trim(),
         mobile: `${dialCode}${mobile.trim()}`,
-        email: email.trim(),
+        email,
         connections,
         hours,
         jobTypes,
@@ -182,15 +181,6 @@ export default function OnboardingPortal({ onFinish }) {
                   />
                 </div>
               </label>
-              <label>
-                Business Email address
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="owner@business.com"
-                />
-              </label>
             </div>
           )}
 
@@ -221,6 +211,7 @@ export default function OnboardingPortal({ onFinish }) {
                 onDisconnect={disconnect}
               />
               {connectError && <p className="form-error">{connectError}</p>}
+              {email && <p className="modal-note" style={{ margin: 0 }}>Business email address: <strong>{email}</strong> (from connected calendar, not editable)</p>}
             </div>
           )}
 
