@@ -44,6 +44,14 @@ export async function deleteEvent(uid, provider = "apple") {
   return handleResponse(res);
 }
 
+export async function fetchPendingReminders(hoursAhead) {
+  const url = hoursAhead
+    ? `${BASE_URL}/calendar/pending-reminders?hours_ahead=${hoursAhead}`
+    : `${BASE_URL}/calendar/pending-reminders`;
+  const res = await fetch(url, { headers: authHeaders() });
+  return handleResponse(res);
+}
+
 export async function triggerCall(fields) {
   const res = await fetch(`${BASE_URL}/calls/trigger`, {
     method: "POST",

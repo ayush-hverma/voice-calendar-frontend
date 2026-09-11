@@ -4,7 +4,7 @@ import ActivityLog from "../components/ActivityLog.jsx";
 import ToastStack from "../components/Toast.jsx";
 import EventForm from "../components/EventForm.jsx";
 import CallForm from "../components/CallForm.jsx";
-import { fetchEvents, createEvent, updateEvent, deleteEvent, triggerCall } from "../api.js";
+import { fetchEvents, createEvent, updateEvent, deleteEvent, triggerCall, fetchCalendarConnections, fetchPendingReminders } from "../api.js";
 import { monthLabel, monthRangeIso } from "../utils/date.js";
 
 let idCounter = 0;
@@ -16,6 +16,7 @@ function useCalendarAccount(account, monthDate, provider) {
   const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
+    if (!provider) return;
     setLoading(true);
     setError(null);
     try {
@@ -36,13 +37,23 @@ function useCalendarAccount(account, monthDate, provider) {
   return { events, setEvents, loading, error, reload: load };
 }
 
-const PROVIDER_TABS = [
-  { id: "apple", label: "Apple Calendar", accountLabel: "iCloud Calendar" },
-  { id: "google", label: "Google Calendar", accountLabel: "Google Calendar" },
-];
+const PROVIDERS = {
+  apple: { label: "Apple Calendar", accountLabel: "iCloud Calendar" },
+  google: { label: "Google Calendar", accountLabel: "Google Calendar" },
+};
+
+// mirrors backend/app/reminder_job.py's _format_appointment_time, so the manually-triggered
+// test call sounds the same as a real scheduled reminder ("Thursday, February 12 at 2:30 PM")
+function formatAppointmentTime(startIso) {
+  const d = new Date(startIso);
+  const datePart = d.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
+  const timePart = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return `${datePart} at ${timePart}`;
+}
 
 export default function DashboardPage({ profile, onOpenSetup, onLogout }) {
-  const [calendarProvider, setCalendarProvider] = useState("apple"); // "apple" | "google"
+  const [calendarProvider, setCalendarProvider] = useState(null); // whichever platform is actually connected
+  const [connectedAccount, setConnectedAccount] = useState(null); // account email/id for that platform
   const [monthDate, setMonthDate] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [toasts, setToasts] = useState([]);
@@ -51,12 +62,42 @@ export default function DashboardPage({ profile, onOpenSetup, onLogout }) {
   const [syncingProvider, setSyncingProvider] = useState(false);
   const [formState, setFormState] = useState(null); // { mode: "create"|"edit", event?, date }
   const [submitting, setSubmitting] = useState(false);
-  const [callFormOpen, setCallFormOpen] = useState(false);
+  const [callFormOpen, setCallFormOpen] = useState(false); // manual "Trigger call" button (purpose=booking)
+  const [reminderCallEvent, setReminderCallEvent] = useState(null); // event triggering a reminder-call test (purpose=reminder)
   const [calling, setCalling] = useState(false);
+  const [remindersOpen, setRemindersOpen] = useState(false);
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [remindersLoading, setRemindersLoading] = useState(false);
 
-  const activeTab = PROVIDER_TABS.find((t) => t.id === calendarProvider);
+  const activeTab = calendarProvider ? PROVIDERS[calendarProvider] : null;
   const user = useCalendarAccount("user", monthDate, calendarProvider);
   const provider = useCalendarAccount("provider", monthDate, calendarProvider);
+
+  const loadReminders = useCallback(async () => {
+    setRemindersLoading(true);
+    try {
+      const data = await fetchPendingReminders();
+      setUpcomingEvents(data.events.slice(0, 5));
+    } catch {
+      // best-effort — dropdown just shows empty on failure
+    } finally {
+      setRemindersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadReminders();
+  }, [loadReminders]);
+
+  useEffect(() => {
+    fetchCalendarConnections()
+      .then((conns) => {
+        const platform = conns.apple ? "apple" : conns.google ? "google" : null;
+        setCalendarProvider(platform);
+        setConnectedAccount(platform ? conns[platform].account : null);
+      })
+      .catch(() => {});
+  }, []);
 
   const pushToast = useCallback((type, title, detail) => {
     const id = nextId();
@@ -91,11 +132,11 @@ export default function DashboardPage({ profile, onOpenSetup, onLogout }) {
     try {
       if (formState.mode === "create") {
         await createEvent(fields, calendarProvider);
-        pushToast("success", "Event created", `Added to user's ${activeTab.accountLabel}`);
+        pushToast("success", "Event created", `Added to user's ${activeTab?.accountLabel}`);
         pushLog("create", `Created "${fields.summary}"`);
       } else {
         await updateEvent(formState.event.uid, fields, calendarProvider);
-        pushToast("success", "Event updated", `Change saved to user's ${activeTab.accountLabel}`);
+        pushToast("success", "Event updated", `Change saved to user's ${activeTab?.accountLabel}`);
         pushLog("update", `Updated "${fields.summary}"`);
       }
       setFormState(null);
@@ -114,10 +155,10 @@ export default function DashboardPage({ profile, onOpenSetup, onLogout }) {
     if (!window.confirm(`Delete "${event.summary}"? This removes it from both calendars.`)) return;
     try {
       await deleteEvent(event.uid, calendarProvider);
-      pushToast("success", "Event deleted", `Removed from user's ${activeTab.accountLabel}`);
+      pushToast("success", "Event deleted", `Removed from user's ${activeTab?.accountLabel}`);
       pushLog("delete", `Deleted "${event.summary}"`);
       await refreshBoth();
-      pushToast("success", "Mirrored to provider", `Removed from provider's ${activeTab.accountLabel}`);
+      pushToast("success", "Mirrored to provider", `Removed from provider's ${activeTab?.accountLabel}`);
       pushLog("delete", "Deletion mirrored to provider calendar");
     } catch (e) {
       pushToast("error", "Delete failed", e.message);
@@ -128,10 +169,13 @@ export default function DashboardPage({ profile, onOpenSetup, onLogout }) {
   async function handleTriggerCall(fields) {
     setCalling(true);
     try {
-      await triggerCall({ ...fields, provider: activeTab.id });
+      await triggerCall({ ...fields, provider: calendarProvider });
       pushToast("success", "Call placed", `Dialing ${fields.to_number}`);
-      pushLog("call", `Triggered outbound call to ${fields.to_number}`);
+      pushLog("call", fields.purpose === "reminder"
+        ? `Triggered reminder call for "${fields.appointment_summary}" to ${fields.to_number}`
+        : `Triggered outbound call to ${fields.to_number}`);
       setCallFormOpen(false);
+      setReminderCallEvent(null);
     } catch (e) {
       pushToast("error", "Call failed", e.message);
       pushLog("error", `Call trigger failed: ${e.message}`);
@@ -145,20 +189,13 @@ export default function DashboardPage({ profile, onOpenSetup, onLogout }) {
       <header className="app-header">
         <div>
           <h1>{profile.businessName || "Voice Calendar"}</h1>
-          <p className="app-subtitle">Live sync — user &amp; provider {activeTab.label}s</p>
+          <p>{activeTab && (
+            <span className="pill pill-live" title={connectedAccount || ""}>
+              ● {activeTab.label} connected: {connectedAccount ? `${connectedAccount}` : ""}
+            </span>
+          )}</p>
         </div>
         <div className="app-controls">
-          <div className="provider-tabs">
-            {PROVIDER_TABS.map((t) => (
-              <button
-                key={t.id}
-                className={["provider-tab", t.id === calendarProvider && "provider-tab-active"].filter(Boolean).join(" ")}
-                onClick={() => setCalendarProvider(t.id)}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
           <button className="nav-btn" onClick={() => changeMonth(-1)}>
             ‹
           </button>
@@ -172,6 +209,46 @@ export default function DashboardPage({ profile, onOpenSetup, onLogout }) {
           <button className="simulate-btn" onClick={() => setCallFormOpen(true)}>
             Trigger call
           </button>
+          <div className="reminders-dropdown-wrap">
+            <button
+              className="today-btn"
+              onClick={() => {
+                const opening = !remindersOpen;
+                setRemindersOpen(opening);
+                if (opening) loadReminders();
+              }}
+            >
+              Reminders{upcomingEvents.length > 0 ? ` (${upcomingEvents.length})` : ""}
+            </button>
+            {remindersOpen && (
+              <div className="reminders-dropdown">
+                {remindersLoading ? (
+                  <p className="reminders-empty">Loading…</p>
+                ) : upcomingEvents.length === 0 ? (
+                  <p className="reminders-empty">No pending reminders</p>
+                ) : (
+                  upcomingEvents.map((e) => (
+                    <div key={e.uid} className="reminders-item">
+                      <span className="reminders-item-summary">{e.summary}</span>
+                      <span className="reminders-item-time">
+                        {new Date(e.start).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                      </span>
+                      <button
+                        type="button"
+                        className="reminders-item-call-btn"
+                        onClick={() => {
+                          setReminderCallEvent({ uid: e.uid, summary: e.summary, formattedTime: formatAppointmentTime(e.start), phoneNumber: e.phone_number || null });
+                          setRemindersOpen(false);
+                        }}
+                      >
+                        Call now
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
           <button
             className="today-btn"
             onClick={handleSyncClick}
@@ -193,7 +270,7 @@ export default function DashboardPage({ profile, onOpenSetup, onLogout }) {
         <div className="calendars-row">
           <CalendarPanel
             title="User"
-            accountLabel={`User's ${activeTab.accountLabel}`}
+            accountLabel={`User's ${activeTab?.accountLabel || "calendar"}`}
             accent="#0a84ff"
             monthDate={monthDate}
             events={user.events}
@@ -210,7 +287,7 @@ export default function DashboardPage({ profile, onOpenSetup, onLogout }) {
           />
           <CalendarPanel
             title="Plumber"
-            accountLabel={`Business's ${activeTab.accountLabel}`}
+            accountLabel={`Business's ${activeTab?.accountLabel || "calendar"}`}
             accent="#ff9f0a"
             monthDate={monthDate}
             events={provider.events}
@@ -239,6 +316,15 @@ export default function DashboardPage({ profile, onOpenSetup, onLogout }) {
         <CallForm
           submitting={calling}
           onCancel={() => setCallFormOpen(false)}
+          onSubmit={handleTriggerCall}
+        />
+      )}
+
+      {reminderCallEvent && (
+        <CallForm
+          submitting={calling}
+          reminderEvent={reminderCallEvent}
+          onCancel={() => setReminderCallEvent(null)}
           onSubmit={handleTriggerCall}
         />
       )}
