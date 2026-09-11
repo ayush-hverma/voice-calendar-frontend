@@ -206,6 +206,7 @@ export default function OnboardingPortal({ onFinish }) {
                 note="OAuth sign-in via Google. You'll be asked to approve calendar read/write scope."
                 connection={connections.google}
                 connecting={connecting === "google"}
+                otherConnected={!!connections.apple}
                 onConnectGoogle={connectGoogle}
                 onDisconnect={disconnect}
               />
@@ -215,6 +216,7 @@ export default function OnboardingPortal({ onFinish }) {
                 note="Sign in with your Apple ID email and an app-specific password (generate one at appleid.apple.com)."
                 connection={connections.apple}
                 connecting={connecting === "apple"}
+                otherConnected={!!connections.google}
                 onConnectApple={connectApple}
                 onDisconnect={disconnect}
               />

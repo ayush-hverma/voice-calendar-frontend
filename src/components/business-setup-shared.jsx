@@ -94,7 +94,7 @@ export function useCalendarConnections(initial = {}) {
   return { connections, setConnections, connecting, error, connectGoogle, connectApple, disconnect };
 }
 
-export function CalendarConnectCard({ platform, label, note, connection, connecting, onConnectGoogle, onConnectApple, onDisconnect }) {
+export function CalendarConnectCard({ platform, label, note, connection, connecting, otherConnected, onConnectGoogle, onConnectApple, onDisconnect }) {
   const [appleEmail, setAppleEmail] = useState("");
   const [applePassword, setApplePassword] = useState("");
 
@@ -106,7 +106,9 @@ export function CalendarConnectCard({ platform, label, note, connection, connect
       </div>
       <p className="connect-note">{note}</p>
 
-      {connection ? (
+      {!connection && otherConnected ? (
+        <p className="connect-note">Only one calendar can be connected at a time. Disconnect the other one first.</p>
+      ) : connection ? (
         <div className="connect-status">
           <span className="connect-account">{connection.account}</span>
           <span className="connect-scopes">Read &amp; write access to events</span>

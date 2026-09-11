@@ -38,7 +38,6 @@ export default function CallForm({ onCancel, onSubmit, submitting }) {
     <div className="modal-overlay" onClick={onCancel}>
       <form className="modal" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
         <h3>Trigger voice call</h3>
-        <p className="modal-note">Places a real outbound call via the ElevenLabs voice agent.</p>
 
         <label>
           Phone number
