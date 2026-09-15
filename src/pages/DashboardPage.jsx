@@ -51,7 +51,7 @@ function formatAppointmentTime(startIso) {
   return `${datePart} at ${timePart}`;
 }
 
-export default function DashboardPage({ profile, onOpenSetup, onLogout }) {
+export default function DashboardPage({ profile, ownerEmail, onOpenSetup, onLogout }) {
   const [calendarProvider, setCalendarProvider] = useState(null); // whichever platform is actually connected
   const [connectedAccount, setConnectedAccount] = useState(null); // account email/id for that platform
   const [monthDate, setMonthDate] = useState(() => new Date());
@@ -189,6 +189,7 @@ export default function DashboardPage({ profile, onOpenSetup, onLogout }) {
       <header className="app-header">
         <div>
           <h1>{profile.businessName || "Voice Calendar"}</h1>
+          {ownerEmail && <p className="owner-label">Logged in as {ownerEmail}</p>}
           <p>{activeTab && (
             <span className="pill pill-live" title={connectedAccount || ""}>
               ● {activeTab.label} connected: {connectedAccount ? `${connectedAccount}` : ""}

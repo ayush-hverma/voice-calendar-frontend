@@ -55,7 +55,7 @@ export async function fetchPendingReminders(hoursAhead) {
 export async function triggerCall(fields) {
   const res = await fetch(`${BASE_URL}/calls/trigger`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(fields),
   });
   return handleResponse(res);

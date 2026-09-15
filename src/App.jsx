@@ -105,5 +105,5 @@ export default function App() {
     );
   }
 
-  return <DashboardPage profile={profile} onOpenSetup={() => navigate("/settings")} onLogout={handleLogout} />;
+  return <DashboardPage profile={profile} ownerEmail={account.email} onOpenSetup={() => navigate("/settings")} onLogout={handleLogout} />;
 }

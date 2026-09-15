@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Vite + React (no router library) dashboard for the single hardcoded business owner account. Talks to `backend/` over plain `fetch` (`src/api.js`), `VITE_API_BASE_URL` env var (defaults `http://localhost:8000`).
+Vite + React (no router library) dashboard for business owner accounts (multiple, fully separate — see backend `accounts` collection). Talks to `backend/` over plain `fetch` (`src/api.js`), `VITE_API_BASE_URL` env var (defaults `http://localhost:8000`).
 
 ## Commands
 
@@ -17,7 +17,7 @@ No test suite or linter configured.
 
 Hand-rolled router (`usePath()` in `App.jsx`, History API + `popstate` — ponytail-noted, add `react-router-dom` if more pages show up). `App.jsx` owns top-level auth/profile state and redirects based on it:
 
-- No token (`utils/auth.js`, `localStorage`) → `/login` (`pages/AuthPage.jsx`) — single hardcoded owner account, `POST /auth/login` with `{username, password}` checked against `OWNER_USERNAME`/`OWNER_PASSWORD` in backend `.env`. No signup.
+- No token (`utils/auth.js`, `localStorage`) → `/login` (`pages/AuthPage.jsx`) — `POST /auth/login` with `{username, password}` checked against the `accounts` collection (backend `accounts_service.py`, bcrypt). No signup; accounts are seeded via `backend/scripts/seed_accounts.py`.
 - Token but no saved business profile → `/setup` (`components/OnboardingPortal.jsx`), a multi-step form (business info, hours, connect calendar) collected via `components/business-setup-shared.jsx` fields, saved with `PUT /business/profile`.
 - Profile exists → `/calendar` (`pages/DashboardPage.jsx`, calendar view + `components/CalendarPanel.jsx`/`EventForm.jsx`/`CallForm.jsx`/`ActivityLog.jsx`) or `/settings` (`pages/SettingsPage.jsx`, re-run of the onboarding fields plus calendar connect/disconnect via `oauth` endpoints).
 
