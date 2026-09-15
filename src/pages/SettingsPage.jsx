@@ -109,15 +109,15 @@ export default function SettingsPage({ profile, onSave, onBack }) {
                 <input value={mobile} onChange={(e) => setMobile(e.target.value.replace(/[^\d]/g, ""))} />
               </div>
             </label>
-            <label>
+            {/* <label>
               Business email address
               <input type="email" value={email} readOnly title="Set from the connected calendar account, not editable" />
-            </label>
+            </label> */}
           </div>
         </section>
 
         <section className="settings-section">
-          <h3>Calendar connections</h3>
+          <h3>Business Calendar connections</h3>
           <div className="onboarding-fields">
             <CalendarConnectCard
               platform="google"
