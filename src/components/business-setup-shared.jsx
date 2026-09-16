@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { BASE_URL } from "../api.js";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { BASE_URL, fetchCalendarConnections } from "../api.js";
 import { getToken } from "../utils/auth.js";
 
 export const COUNTRY_CODES = [
@@ -33,6 +33,9 @@ export function useCalendarConnections(initial = {}) {
   const [connections, setConnections] = useState(initial);
   const [connecting, setConnecting] = useState(null);
   const [error, setError] = useState(null);
+  const popupWatch = useRef(null);
+
+  useEffect(() => () => clearInterval(popupWatch.current), []);
 
   useEffect(() => {
     function onMessage(e) {
@@ -53,11 +56,25 @@ export function useCalendarConnections(initial = {}) {
     setError(null);
     setConnecting("google");
     const token = getToken();
-    window.open(
+    const popup = window.open(
       `${BASE_URL}/oauth/google/authorize?token=${encodeURIComponent(token)}`,
       "google-oauth",
       "width=520,height=650"
     );
+
+    // The popup's postMessage is the fast path, but it is dropped silently whenever
+    // its target origin doesn't match this page (FRONTEND_BASE_URL misconfigured), the
+    // popup is blocked, or the user closes it — which left the button stuck on
+    // "Connecting..." forever. Once the popup is gone, ask the backend instead.
+    clearInterval(popupWatch.current);
+    popupWatch.current = setInterval(() => {
+      if (popup && !popup.closed) return;
+      clearInterval(popupWatch.current);
+      fetchCalendarConnections()
+        .then(setConnections)
+        .catch(() => {})
+        .finally(() => setConnecting(null));
+    }, 500);
   }, []);
 
   const connectApple = useCallback(async (email, password) => {
